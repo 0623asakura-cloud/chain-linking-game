@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Chain Linking</title>
+  <link rel="stylesheet" href="./assets/style.css">
+</head>
+<body>
+  <div class="card" id="game-card">
+    <header class="top">
+      <h1 id="title" data-i18n="title">Chain Linking</h1>
+      <button id="lang-toggle" aria-label="Toggle language">日本語</button>
+    </header>
+
+    <section id="words-section">
+      <div id="word-list" aria-label="word list"></div>
+      <div class="word-controls">
+        <button id="word-minus" aria-label="decrease word count">−</button>
+        <span id="word-count">3</span>
+        <button id="word-plus" aria-label="increase word count">＋</button>
+      </div>
+    </section>
+
+    <section id="story-section">
+      <textarea id="story" rows="4" placeholder="Write a funny story..." data-i18n="storyPlaceholder" aria-label="story input"></textarea>
+      <div id="tip" class="tip"></div>
+    </section>
+
+    <section class="buttons">
+      <button id="check" class="btn" data-i18n="check" aria-label="check story">Check</button>
+      <button id="new-words" class="btn" data-i18n="newWords" aria-label="new words">New Words</button>
+      <button id="hint" class="btn" data-i18n="hint" aria-label="hint">Hint</button>
+      <button id="tpr" class="btn" data-i18n="tpr" aria-label="TPR idea">TPR idea</button>
+      <button id="reset" class="btn" data-i18n="reset" aria-label="reset game">Reset</button>
+      <button id="timer-toggle" class="btn" data-i18n="timer" aria-label="toggle timer">Timer:30s</button>
+      <button id="copy-link" class="btn" data-i18n="copyLink" aria-label="copy round link">Copy Round Link</button>
+    </section>
+
+    <section id="feedback" aria-live="polite"></section>
+
+    <section id="score-board">
+      <span id="score-label" data-i18n="score">Score:</span> <span id="score">0</span>
+      <span id="timer" class="timer"></span>
+    </section>
+
+    <section id="history-section">
+      <h2 id="history-title" data-i18n="history">Previous Attempts</h2>
+      <ul id="history"></ul>
+    </section>
+
+    <div id="emoji-container"></div>
+  </div>
+
+  <script src="./assets/app.js"></script>
+</body>
+</html>
+
+:root {
+  --bg: #fefefe;
+  --primary: #00aaff;
+  --success: #4caf50;
+  --fail: #f44336;
+  --dark: #333;
+}
+
+body{
+  margin:0;
+  font-family:sans-serif;
+  background:var(--bg);
+  display:flex;
+  justify-content:center;
+  padding:10px;
+}
+
+.card{
+  width:100%;
+  max-width:600px;
+  background:#fff;
+  border-radius:8px;
+  padding:20px;
+  box-shadow:0 2px 5px rgba(0,0,0,0.1);
+  position:relative;
+}
+
+.top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+#word-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:10px;
+}
+
+.word{
+  background:#eee;
+  border-radius:4px;
+  padding:4px 8px;
+}
+
+.word-controls{
+  margin-top:10px;
+  text-align:center;
+}
+
+.word-controls button{
+  font-size:1.2rem;
+}
+
+textarea{
+  width:100%;
+  margin-top:15px;
+  padding:10px;
+  border:1px solid #ccc;
+  border-radius:4px;
+  font-size:1rem;
+}
+
+.buttons{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-top:15px;
+}
+
+.btn{
+  flex:1 1 45%;
+  padding:10px;
+  font-size:1rem;
+  border:none;
+  border-radius:4px;
+  background:var(--primary);
+  color:#fff;
+  cursor:pointer;
+}
+
+.btn:active{
+  transform:scale(0.98);
+}
+
+#feedback{
+  margin-top:10px;
+  min-height:24px;
+}
+
+#score-board{
+  margin-top:10px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-size:1.1rem;
+}
+
+#history-section{
+  margin-top:20px;
+}
+
+#history li{
+  font-size:0.9rem;
+  margin-bottom:4px;
+}
+
+/* Animations */
+.success{
+  animation:pop 0.5s;
+}
+
+.fail{
+  animation:shake 0.4s;
+}
+
+@keyframes pop{
+  0%{transform:scale(1);}
+  50%{transform:scale(1.05);}
+  100%{transform:scale(1);}
+}
+
+@keyframes shake{
+  0%{transform:translateX(0);}
+  25%{transform:translateX(-5px);}
+  50%{transform:translateX(5px);}
+  75%{transform:translateX(-5px);}
+  100%{transform:translateX(0);}
+}
+
+#emoji-container{
+  pointer-events:none;
+  position:absolute;
+  top:0;left:0;right:0;bottom:0;
+}
+
+.burst{
+  position:absolute;
+  top:50%;
+  animation:rise 1s ease-out forwards;
+  font-size:24px;
+}
+
+@keyframes rise{
+  from{transform:translateY(0);opacity:1;}
+  to{transform:translateY(-80px);opacity:0;}
+}
+
+.tip{
+  margin-top:5px;
+  font-size:0.9rem;
+  color:var(--dark);
+  min-height:20px;
+}
+
+.timer{
+  font-weight:bold;
+}
+'use strict';
+
+// Global state
+const WORDS_URL = './data/words.json';
+let words = [];
+let currentWords = [];
+let wordCount = 3;
+let timerDuration = 30;
+let timerRemaining = 0;
+let timerInterval = null;
+let totalScore = 0;
+let currentLang = 'en';
+
+const historyKey = 'clg_history';
+
+// Tips
+const tipsTPR = [
+  'Act out throwing each word like a ninja star!',
+  'Mime the action of the verb with your whole body.',
+  'Pretend the noun is extremely heavy.',
+  'Use your face to show the adjective strongly.'
+];
+const tipsExaggeration = [
+  'Picture it 100 times bigger than normal.',
+  'Imagine the word singing opera loudly.',
+  'Think of the word wearing a silly costume.',
+  'Visualize the word made of jelly.'
+];
+const tipPool = [...tipsTPR, ...tipsExaggeration];
+let tipIdx = 0;
+
+// i18n strings
+const i18n = {
+  en: {
+    title: 'Chain Linking',
+    newWords: 'New Words',
+    hint: 'Hint',
+    tpr: 'TPR idea',
+    reset: 'Reset',
+    check: 'Check',
+    timer30: 'Timer:30s',
+    timer60: 'Timer:60s',
+    copyLink: 'Copy Round Link',
+    score: 'Score:',
+    history: 'Previous Attempts',
+    storyPlaceholder: 'Write a funny story...',
+    langButton: '日本語',
+    feedbackSuccess: ['Fantastic! 😂', 'LOL! Great job!', 'Hilarious! 🎉'],
+    feedbackFail: ['Try again! Missing: ', 'Oops! You forgot: '],
+    timeUp: 'Time\'s up!',
+    linkCopied: 'Link copied!'
+  },
+  jp: {
+    title: '連想チェーン',
+    newWords: '新しい言葉',
+    hint: 'ヒント',
+    tpr: 'TPR案',
+    reset: 'リセット',
+    check: 'チェック',
+    timer30: 'タイマー:30秒',
+    timer60: 'タイマー:60秒',
+    copyLink: 'リンクをコピー',
+    score: 'スコア:',
+    history: '最近の挑戦',
+    storyPlaceholder: '面白いストーリーを書いて…',
+    langButton: 'English',
+    feedbackSuccess: ['最高！😂', '爆笑！素晴らしい！', 'ナイスチェーン！🎉'],
+    feedbackFail: ['もう一度！足りない：', 'あれ？忘れた：'],
+    timeUp: '時間切れ！',
+    linkCopied: 'リンクをコピーしました'
+  }
+};
+
+document.addEventListener('DOMContentLoaded', init);
+
+/**
+ * Initialize the app: load word data, set up events, and start first round.
+ */
+function init() {
+  fetch(WORDS_URL)
+    .then(r => r.json())
+    .then(data => {
+      words = data;
+      setupEvents();
+      loadFromQuery();
+      displayHistory();
+      updateLang();
+      showTip();
+    })
+    .catch(err => console.error('Failed to load words.json', err));
+}
+
+/**
+ * Bind UI event listeners.
+ */
+function setupEvents() {
+  document.getElementById('check').addEventListener('click', checkStory);
+  document.getElementById('new-words').addEventListener('click', () => {
+    currentWords = selectRandomWords(wordCount);
+    resetRound();
+  });
+  document.getElementById('hint').addEventListener('click', showHint);
+  document.getElementById('tpr').addEventListener('click', showTPRIdea);
+  document.getElementById('reset').addEventListener('click', resetGame);
+  document.getElementById('copy-link').addEventListener('click', copyLink);
+  document.getElementById('word-plus').addEventListener('click', () => {
+    if (wordCount < 5) {
+      wordCount++;
+      currentWords = selectRandomWords(wordCount);
+      resetRound();
+    }
+  });
+  document.getElementById('word-minus').addEventListener('click', () => {
+    if (wordCount > 3) {
+      wordCount--;
+      currentWords = selectRandomWords(wordCount);
+      resetRound();
+    }
+  });
+  document.getElementById('lang-toggle').addEventListener('click', toggleLang);
+  document.getElementById('timer-toggle').addEventListener('click', toggleTimer);
+}
+
+/**
+ * Load words from URL query if present, otherwise start a new random round.
+ */
+function loadFromQuery() {
+  const params = new URLSearchParams(location.search);
+  const wParam = params.get('w');
+  if (wParam) {
+    const indices = wParam.split('-').map(n => parseInt(n, 10))
+      .filter(n => !isNaN(n) && words[n]);
+    currentWords = indices.map(i => ({ ...words[i], index: i }));
+    wordCount = currentWords.length;
+    displayWords();
+    startTimer();
+  } else {
+    currentWords = selectRandomWords(wordCount);
+    resetRound();
+  }
+}
+
+/**
+ * Reset round UI after selecting new words.
+ */
+function resetRound() {
+  displayWords();
+  document.getElementById('story').value = '';
+  document.getElementById('feedback').textContent = '';
+  showTip();
+  startTimer();
+  updateQuery();
+}
+
+/**
+ * Choose random unique words.
+ */
+function selectRandomWords(count) {
+  const used = new Set();
+  const result = [];
+  while (result.length < count && words.length > 0) {
+    const idx = Math.floor(Math.random() * words.length);
+    if (!used.has(idx)) {
+      used.add(idx);
+      result.push({ ...words[idx], index: idx });
+    }
+  }
+  return result;
+}
+
+/**
+ * Render current words on screen.
+ */
+function displayWords() {
+  const list = document.getElementById('word-list');
+  list.innerHTML = '';
+  currentWords.forEach(w => {
+    const div = document.createElement('div');
+    div.className = 'word';
+    div.textContent = `${w.jp} (${w.romaji}) - ${w.en}`;
+    list.appendChild(div);
+  });
+  document.getElementById('word-count').textContent = currentWords.length;
+}
+
+/**
+ * Check story for word inclusion and update score.
+ */
+function checkStory() {
+  const storyEl = document.getElementById('story');
+  const story = storyEl.value.trim();
+  if (!story) return;
+
+  const lower = story.toLowerCase();
+  let used = 0;
+  const missing = [];
+
+  currentWords.forEach(w => {
+    const jpUsed = story.includes(w.jp);
+    const romajiUsed = lower.includes(w.romaji.toLowerCase());
+    const enUsed = lower.includes(w.en.toLowerCase());
+    if (jpUsed || romajiUsed || enUsed) used++;
+    else missing.push(w.jp);
+  });
+
+  const card = document.getElementById('game-card');
+  if (missing.length === 0) {
+    const bonus = Math.floor(story.length / 40) + (story.match(/\p{Emoji}/gu) || []).length;
+    const roundScore = used + bonus;
+    totalScore += roundScore;
+    document.getElementById('feedback').textContent =
+      randomItem(i18n[currentLang].feedbackSuccess) + ` (+${roundScore})`;
+    document.getElementById('score').textContent = totalScore;
+    card.classList.add('success');
+    emojiBurst();
+  } else {
+    document.getElementById('feedback').textContent =
+      randomItem(i18n[currentLang].feedbackFail) + missing.join(', ');
+    card.classList.add('fail');
+  }
+
+  saveAttempt(story);
+  displayHistory();
+
+  setTimeout(() => card.classList.remove('success', 'fail'), 600);
+}
+
+/**
+ * Create an example chain story hint.
+ */
+function showHint() {
+  if (!currentWords.length) return;
+  const en = currentWords.map(w => w.en);
+  let hint = '';
+  if (en.length === 3) {
+    hint = `The ${en[0]} ${en[1]}s with a ${en[2]}.`;
+  } else if (en.length === 4) {
+    hint = `A ${en[0]} ${en[1]}s while the ${en[2]} meets the ${en[3]}.`;
+  } else {
+    hint = `When the ${en[0]} ${en[1]}s, the ${en[2]} and ${en[3]} admire a ${en[4]}.`;
+  }
+  document.getElementById('feedback').textContent = hint;
+}
+
+/**
+ * Show a random TPR idea.
+ */
+function showTPRIdea() {
+  document.getElementById('tip').textContent = randomItem(tipsTPR);
+}
+
+/**
+ * Toggle language.
+ */
+function toggleLang() {
+  currentLang = currentLang === 'en' ? 'jp' : 'en';
+  updateLang();
+}
+
+/**
+ * Update UI text for current language.
+ */
+function updateLang() {
+  document.getElementById('title').textContent = i18n[currentLang].title;
+  document.getElementById('new-words').textContent = i18n[currentLang].newWords;
+  document.getElementById('hint').textContent = i18n[currentLang].hint;
+  document.getElementById('tpr').textContent = i18n[currentLang].tpr;
+  document.getElementById('reset').textContent = i18n[currentLang].reset;
+  document.getElementById('check').textContent = i18n[currentLang].check;
+  document.getElementById('copy-link').textContent = i18n[currentLang].copyLink;
+  document.getElementById('score-label').textContent = i18n[currentLang].score;
+  document.getElementById('history-title').textContent = i18n[currentLang].history;
+  document.getElementById('story').placeholder = i18n[currentLang].storyPlaceholder;
+  document.getElementById('lang-toggle').textContent = i18n[currentLang].langButton;
+  const timerBtn = document.getElementById('timer-toggle');
+  timerBtn.textContent = timerDuration === 30 ? i18n[currentLang].timer30 : i18n[currentLang].timer60;
+  if (timerRemaining > 0) {
+    document.getElementById('timer').textContent = `${timerRemaining}s`;
+  }
+}
+
+/**
+ * Toggle timer duration between 30s and 60s.
+ */
+function toggleTimer() {
+  timerDuration = timerDuration === 30 ? 60 : 30;
+  startTimer();
+  updateLang();
+}
+
+/**
+ * Start or restart the round timer.
+ */
+function startTimer() {
+  clearInterval(timerInterval);
+  timerRemaining = timerDuration;
+  const timerEl = document.getElementById('timer');
+  timerEl.textContent = `${timerRemaining}s`;
+  timerInterval = setInterval(() => {
+    timerRemaining--;
+    if (timerRemaining <= 0) {
+      clearInterval(timerInterval);
+      timerEl.textContent = i18n[currentLang].timeUp;
+    } else {
+      timerEl.textContent = `${timerRemaining}s`;
+    }
+  }, 1000);
+}
+
+/**
+ * Show rotating tip text.
+ */
+function showTip() {
+  const tip = tipPool[tipIdx % tipPool.length];
+  document.getElementById('tip').textContent = tip;
+  tipIdx++;
+}
+
+/**
+ * Save attempt to localStorage.
+ */
+function saveAttempt(story) {
+  const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+  history.unshift({
+    words: currentWords.map(w => w.jp),
+    story,
+    time: Date.now()
+  });
+  localStorage.setItem(historyKey, JSON.stringify(history.slice(0, 10)));
+}
+
+/**
+ * Render attempt history.
+ */
+function displayHistory() {
+  const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+  const ul = document.getElementById('history');
+  ul.innerHTML = '';
+  history.forEach(h => {
+    const li = document.createElement('li');
+    const date = new Date(h.time).toLocaleDateString();
+    li.textContent = `[${date}] ${h.words.join(', ')} - ${h.story.slice(0, 30)}`;
+    ul.appendChild(li);
+  });
+}
+
+/**
+ * Clear game state.
+ */
+function resetGame() {
+  totalScore = 0;
+  document.getElementById('score').textContent = '0';
+  localStorage.removeItem(historyKey);
+  displayHistory();
+  currentWords = selectRandomWords(wordCount);
+  resetRound();
+}
+
+/**
+ * Update URL with current word indices for sharing.
+ */
+function updateQuery() {
+  const indices = currentWords.map(w => w.index).join('-');
+  history.replaceState(null, '', `${location.pathname}?w=${indices}`);
+}
+
+/**
+ * Copy round link to clipboard.
+ */
+function copyLink() {
+  navigator.clipboard && navigator.clipboard.writeText(location.href)
+    .then(() => {
+      document.getElementById('feedback').textContent = i18n[currentLang].linkCopied;
+    })
+    .catch(() => { /* ignore */ });
+}
+
+/**
+ * Generate emoji burst on success.
+ */
+function emojiBurst() {
+  const container = document.getElementById('emoji-container');
+  const emojis = ['😂', '🎉', '✨', '😄', '🥳'];
+  for (let i = 0; i < 10; i++) {
+    const span = document.createElement('span');
+    span.className = 'burst';
+    span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    span.style.left = (Math.random() * 80 + 10) + '%';
+    span.style.animationDelay = (Math.random() * 0.5) + 's';
+    container.appendChild(span);
+    span.addEventListener('animationend', () => span.remove());
+  }
+}
+
+/**
+ * Utility: get random item from array.
+ */
+function randomItem(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+[
+  {"jp":"猫","romaji":"neko","en":"cat","pos":"noun"},
+  {"jp":"犬","romaji":"inu","en":"dog","pos":"noun"},
+  {"jp":"車","romaji":"kuruma","en":"car","pos":"noun"},
+  {"jp":"魚","romaji":"sakana","en":"fish","pos":"noun"},
+  {"jp":"山","romaji":"yama","en":"mountain","pos":"noun"},
+  {"jp":"川","romaji":"kawa","en":"river","pos":"noun"},
+  {"jp":"空","romaji":"sora","en":"sky","pos":"noun"},
+  {"jp":"海","romaji":"umi","en":"sea","pos":"noun"},
+  {"jp":"雨","romaji":"ame","en":"rain","pos":"noun"},
+  {"jp":"花","romaji":"hana","en":"flower","pos":"noun"},
+  {"jp":"本","romaji":"hon","en":"book","pos":"noun"},
+  {"jp":"家","romaji":"ie","en":"house","pos":"noun"},
+  {"jp":"友達","romaji":"tomodachi","en":"friend","pos":"noun"},
+  {"jp":"先生","romaji":"sensei","en":"teacher","pos":"noun"},
+  {"jp":"学校","romaji":"gakkou","en":"school","pos":"noun"},
+  {"jp":"仕事","romaji":"shigoto","en":"job","pos":"noun"},
+  {"jp":"時間","romaji":"jikan","en":"time","pos":"noun"},
+  {"jp":"音楽","romaji":"ongaku","en":"music","pos":"noun"},
+  {"jp":"映画","romaji":"eiga","en":"movie","pos":"noun"},
+  {"jp":"食べ物","romaji":"tabemono","en":"food","pos":"noun"},
+  {"jp":"飲み物","romaji":"nomimono","en":"drink","pos":"noun"},
+  {"jp":"鳥","romaji":"tori","en":"bird","pos":"noun"},
+  {"jp":"虫","romaji":"mushi","en":"insect","pos":"noun"},
+  {"jp":"電話","romaji":"denwa","en":"phone","pos":"noun"},
+  {"jp":"鍵","romaji":"kagi","en":"key","pos":"noun"},
+  {"jp":"テーブル","romaji":"teeburu","en":"table","pos":"noun"},
+  {"jp":"椅子","romaji":"isu","en":"chair","pos":"noun"},
+  {"jp":"帽子","romaji":"boushi","en":"hat","pos":"noun"},
+  {"jp":"靴","romaji":"kutsu","en":"shoes","pos":"noun"},
+  {"jp":"地図","romaji":"chizu","en":"map","pos":"noun"},
+  {"jp":"道","romaji":"michi","en":"road","pos":"noun"},
+  {"jp":"バス","romaji":"basu","en":"bus","pos":"noun"},
+  {"jp":"電車","romaji":"densha","en":"train","pos":"noun"},
+  {"jp":"銀行","romaji":"ginkou","en":"bank","pos":"noun"},
+  {"jp":"風","romaji":"kaze","en":"wind","pos":"noun"},
+  {"jp":"星","romaji":"hoshi","en":"star","pos":"noun"},
+  {"jp":"砂","romaji":"suna","en":"sand","pos":"noun"},
+  {"jp":"橋","romaji":"hashi","en":"bridge","pos":"noun"},
+  {"jp":"火","romaji":"hi","en":"fire","pos":"noun"},
+  {"jp":"雪","romaji":"yuki","en":"snow","pos":"noun"},
+  {"jp":"走る","romaji":"hashiru","en":"run","pos":"verb"},
+  {"jp":"食べる","romaji":"taberu","en":"eat","pos":"verb"},
+  {"jp":"飲む","romaji":"nomu","en":"drink","pos":"verb"},
+  {"jp":"見る","romaji":"miru","en":"see","pos":"verb"},
+  {"jp":"聞く","romaji":"kiku","en":"listen","pos":"verb"},
+  {"jp":"読む","romaji":"yomu","en":"read","pos":"verb"},
+  {"jp":"書く","romaji":"kaku","en":"write","pos":"verb"},
+  {"jp":"話す","romaji":"hanasu","en":"speak","pos":"verb"},
+  {"jp":"泳ぐ","romaji":"oyogu","en":"swim","pos":"verb"},
+  {"jp":"歩く","romaji":"aruku","en":"walk","pos":"verb"},
+  {"jp":"飛ぶ","romaji":"tobu","en":"fly","pos":"verb"},
+  {"jp":"座る","romaji":"suwaru","en":"sit","pos":"verb"},
+  {"jp":"立つ","romaji":"tatsu","en":"stand","pos":"verb"},
+  {"jp":"眠る","romaji":"nemuru","en":"sleep","pos":"verb"},
+  {"jp":"笑う","romaji":"warau","en":"laugh","pos":"verb"},
+  {"jp":"泣く","romaji":"naku","en":"cry","pos":"verb"},
+  {"jp":"歌う","romaji":"utau","en":"sing","pos":"verb"},
+  {"jp":"踊る","romaji":"odoru","en":"dance","pos":"verb"},
+  {"jp":"遊ぶ","romaji":"asobu","en":"play","pos":"verb"},
+  {"jp":"働く","romaji":"hataraku","en":"work","pos":"verb"},
+  {"jp":"勉強する","romaji":"benkyou suru","en":"study","pos":"verb"},
+  {"jp":"探す","romaji":"sagasu","en":"search","pos":"verb"},
+  {"jp":"見つける","romaji":"mitsukeru","en":"find","pos":"verb"},
+  {"jp":"買う","romaji":"kau","en":"buy","pos":"verb"},
+  {"jp":"売る","romaji":"uru","en":"sell","pos":"verb"},
+  {"jp":"開ける","romaji":"akeru","en":"open","pos":"verb"},
+  {"jp":"閉める","romaji":"shimeru","en":"close","pos":"verb"},
+  {"jp":"乗る","romaji":"noru","en":"ride","pos":"verb"},
+  {"jp":"降りる","romaji":"oriru","en":"get off","pos":"verb"},
+  {"jp":"作る","romaji":"tsukuru","en":"make","pos":"verb"},
+  {"jp":"使う","romaji":"tsukau","en":"use","pos":"verb"},
+  {"jp":"洗う","romaji":"arau","en":"wash","pos":"verb"},
+  {"jp":"掃除する","romaji":"souji suru","en":"clean","pos":"verb"},
+  {"jp":"忘れる","romaji":"wasureru","en":"forget","pos":"verb"},
+  {"jp":"思い出す","romaji":"omoidasu","en":"remember","pos":"verb"},
+  {"jp":"教える","romaji":"oshieru","en":"teach","pos":"verb"},
+  {"jp":"習う","romaji":"narau","en":"learn","pos":"verb"},
+  {"jp":"勝つ","romaji":"katsu","en":"win","pos":"verb"},
+  {"jp":"負ける","romaji":"makeru","en":"lose","pos":"verb"},
+  {"jp":"待つ","romaji":"matsu","en":"wait","pos":"verb"},
+  {"jp":"大きい","romaji":"ookii","en":"big","pos":"adj"},
+  {"jp":"小さい","romaji":"chiisai","en":"small","pos":"adj"},
+  {"jp":"新しい","romaji":"atarashii","en":"new","pos":"adj"},
+  {"jp":"古い","romaji":"furui","en":"old","pos":"adj"},
+  {"jp":"速い","romaji":"hayai","en":"fast","pos":"adj"},
+  {"jp":"遅い","romaji":"osoi","en":"slow","pos":"adj"},
+  {"jp":"暑い","romaji":"atsui","en":"hot","pos":"adj"},
+  {"jp":"寒い","romaji":"samui","en":"cold","pos":"adj"},
+  {"jp":"楽しい","romaji":"tanoshii","en":"fun","pos":"adj"},
+  {"jp":"悲しい","romaji":"kanashii","en":"sad","pos":"adj"},
+  {"jp":"面白い","romaji":"omoshiroi","en":"interesting","pos":"adj"},
+  {"jp":"つまらない","romaji":"tsumaranai","en":"boring","pos":"adj"},
+  {"jp":"明るい","romaji":"akarui","en":"bright","pos":"adj"},
+  {"jp":"暗い","romaji":"kurai","en":"dark","pos":"adj"},
+  {"jp":"強い","romaji":"tsuyoi","en":"strong","pos":"adj"},
+  {"jp":"弱い","romaji":"yowai","en":"weak","pos":"adj"},
+  {"jp":"高い","romaji":"takai","en":"tall","pos":"adj"},
+  {"jp":"低い","romaji":"hikui","en":"low","pos":"adj"},
+  {"jp":"甘い","romaji":"amai","en":"sweet","pos":"adj"},
+  {"jp":"苦い","romaji":"nigai","en":"bitter","pos":"adj"},
+  {"jp":"美しい","romaji":"utsukushii","en":"beautiful","pos":"adj"},
+  {"jp":"醜い","romaji":"minikui","en":"ugly","pos":"adj"},
+  {"jp":"忙しい","romaji":"isogashii","en":"busy","pos":"adj"},
+  {"jp":"暇な","romaji":"himana","en":"free","pos":"adj"},
+  {"jp":"静かな","romaji":"shizukana","en":"quiet","pos":"adj"},
+  {"jp":"うるさい","romaji":"urusai","en":"noisy","pos":"adj"},
+  {"jp":"安い","romaji":"yasui","en":"cheap","pos":"adj"},
+  {"jp":"暖かい","romaji":"atatakai","en":"warm","pos":"adj"},
+  {"jp":"冷たい","romaji":"tsumetai","en":"cold (touch)","pos":"adj"},
+  {"jp":"簡単な","romaji":"kantan na","en":"easy","pos":"adj"},
+  {"jp":"難しい","romaji":"muzukashii","en":"difficult","pos":"adj"},
+  {"jp":"嬉しい","romaji":"ureshii","en":"happy","pos":"adj"},
+  {"jp":"怖い","romaji":"kowai","en":"scary","pos":"adj"},
+  {"jp":"健康な","romaji":"kenkou na","en":"healthy","pos":"adj"},
+  {"jp":"危険な","romaji":"kiken na","en":"dangerous","pos":"adj"},
+  {"jp":"有名な","romaji":"yuumei na","en":"famous","pos":"adj"},
+  {"jp":"便利な","romaji":"benri na","en":"convenient","pos":"adj"},
+  {"jp":"不思議な","romaji":"fushigi na","en":"mysterious","pos":"adj"},
+  {"jp":"嫌いな","romaji":"kirai na","en":"disliked","pos":"adj"},
+  {"jp":"好きな","romaji":"suki na","en":"favorite","pos":"adj"}
+]
+# Chain Linking Game
+
+A single-page Japanese vocabulary chain-linking game that uses humor, exaggerated imagery, and TPR ideas to help memorize words.
+
+## Features
+
+- Random 3–5 word sets (verbs, nouns, adjectives) with JP, romaji, and English.
+- Write a short funny story using **all** words.
+- Scoring with bonuses for length and emojis.
+- Positive feedback, emoji burst animations, rotating tips.
+- Timer mode (30s/60s) and multiplayer-lite round sharing.
+- Saves the last 10 attempts in `localStorage` for spaced review.
+- English/Japanese UI toggle.
+
+## Run locally
+
+Open `index.html` directly or start a local server:
+
+```bash
+python3 -m http.server
