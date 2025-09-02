@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chain Linking Game</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <div class="container card">
+    <header>
+      <h1 id="title" data-i18n="title">Chain Linking</h1>
+      <div class="controls top-controls">
+        <button id="language-toggle" aria-label="Toggle language">JP/EN</button>
+        <select id="word-count" aria-label="Word count">
+          <option value="3" selected>3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+        <select id="timer-select" aria-label="Timer">
+          <option value="30" selected>30s</option>
+          <option value="60">60s</option>
+        </select>
+        <span id="timer">30</span>
+      </div>
+    </header>
+
+    <section id="word-section">
+      <ul id="word-list"></ul>
+    </section>
+
+    <textarea id="story" rows="3" aria-label="Story input" placeholder="Write a funny story..."></textarea>
+    <div id="tips" aria-live="polite">
+      <p id="tpr-tip"></p>
+      <p id="ex-tip"></p>
+    </div>
+
+    <div class="controls">
+      <button id="submit-btn" data-i18n="submit">Submit</button>
+      <button id="new-btn" data-i18n="newWords">New Words</button>
+      <button id="hint-btn" data-i18n="hint">Hint</button>
+      <button id="tpr-btn" data-i18n="tpr">TPR idea</button>
+      <button id="copy-link-btn" data-i18n="copy">Copy Round Link</button>
+      <button id="reset-btn" data-i18n="reset">Reset</button>
+    </div>
+
+    <div id="feedback" aria-live="polite"></div>
+    <div id="score">Score: 0</div>
+  </div>
+  <script src="assets/app.js"></script>
+</body>
+</html>
