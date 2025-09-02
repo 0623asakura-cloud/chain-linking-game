@@ -1,0 +1,159 @@
+:root {
+  --bg: #fefefe;
+  --primary: #00aaff;
+  --success: #4caf50;
+  --fail: #f44336;
+  --dark: #333;
+}
+
+body{
+  margin:0;
+  font-family:sans-serif;
+  background:var(--bg);
+  display:flex;
+  justify-content:center;
+  padding:10px;
+}
+
+.card{
+  width:100%;
+  max-width:600px;
+  background:#fff;
+  border-radius:8px;
+  padding:20px;
+  box-shadow:0 2px 5px rgba(0,0,0,0.1);
+  position:relative;
+}
+
+.top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+#word-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:10px;
+}
+
+.word{
+  background:#eee;
+  border-radius:4px;
+  padding:4px 8px;
+}
+
+.word-controls{
+  margin-top:10px;
+  text-align:center;
+}
+
+.word-controls button{
+  font-size:1.2rem;
+}
+
+textarea{
+  width:100%;
+  margin-top:15px;
+  padding:10px;
+  border:1px solid #ccc;
+  border-radius:4px;
+  font-size:1rem;
+}
+
+.buttons{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-top:15px;
+}
+
+.btn{
+  flex:1 1 45%;
+  padding:10px;
+  font-size:1rem;
+  border:none;
+  border-radius:4px;
+  background:var(--primary);
+  color:#fff;
+  cursor:pointer;
+}
+
+.btn:active{
+  transform:scale(0.98);
+}
+
+#feedback{
+  margin-top:10px;
+  min-height:24px;
+}
+
+#score-board{
+  margin-top:10px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-size:1.1rem;
+}
+
+#history-section{
+  margin-top:20px;
+}
+
+#history li{
+  font-size:0.9rem;
+  margin-bottom:4px;
+}
+
+/* Animations */
+.success{
+  animation:pop 0.5s;
+}
+
+.fail{
+  animation:shake 0.4s;
+}
+
+@keyframes pop{
+  0%{transform:scale(1);}
+  50%{transform:scale(1.05);}
+  100%{transform:scale(1);}
+}
+
+@keyframes shake{
+  0%{transform:translateX(0);}
+  25%{transform:translateX(-5px);}
+  50%{transform:translateX(5px);}
+  75%{transform:translateX(-5px);}
+  100%{transform:translateX(0);}
+}
+
+#emoji-container{
+  pointer-events:none;
+  position:absolute;
+  top:0;left:0;right:0;bottom:0;
+}
+
+.burst{
+  position:absolute;
+  top:50%;
+  animation:rise 1s ease-out forwards;
+  font-size:24px;
+}
+
+@keyframes rise{
+  from{transform:translateY(0);opacity:1;}
+  to{transform:translateY(-80px);opacity:0;}
+}
+
+.tip{
+  margin-top:5px;
+  font-size:0.9rem;
+  color:var(--dark);
+  min-height:20px;
+}
+
+.timer{
+  font-weight:bold;
+}
